@@ -30,7 +30,6 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     unsigned int numEntryPerCluster = oneClusterSizeByte / sizeof(DIRENTRY);
     DIRENTRY *de;
     unsigned char *lfn = malloc(sizeof(char)*32);
-    unsigned char *firstByte = malloc(sizeof(char));
     unsigned int NofLFN;
     unsigned char *tempLFNName;
     unsigned char *LFNarray[11];
@@ -82,8 +81,15 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
             // printf("8.3 here\n");
             startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
             fnameLength = checkFileName(fname,de->DIR_Name);
-            
-            LFNName = malloc(sizeof(char) * 255);
+
+            if(de->DIR_Attr & 0b00010000){
+                fname[fnameLength++] = '/';
+                fname[fnameLength] = 0;
+                LFNName[totalLFNlength++] = '/';
+                LFNName[totalLFNlength] = 0;
+            }
+            if(NofLFN > 0){
+                 LFNName = malloc(sizeof(char) * 255);
             for(i=(NofLFN-1);i>-1;i--){
                 if(i == (NofLFN-1)){
                 strcpy(LFNName,LFNarray[i]);
@@ -93,14 +99,6 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
              //   printf("%s\n",LFNarray[i]);
             }
             LFNName[totalLFNlength]=0;
-
-            if(de->DIR_Attr & 0b00010000){
-                fname[fnameLength++] = '/';
-                fname[fnameLength] = 0;
-                LFNName[totalLFNlength++] = '/';
-                LFNName[totalLFNlength] = 0;
-            }
-            if(LFNName != NULL){
                 printf("%d, %s, %s, %u, %u\n",countEntry++,fname,LFNName,de->DIR_FileSize,startCluster);
            //         printf("Cluster: %d\n",cluster);
                 free(LFNName);
@@ -120,7 +118,7 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         }
 
     }
-
+    free(lfn);
 }
 
 void printInfo(BOOTSECTOR be,unsigned int *FAT,unsigned int totalDataCluster){

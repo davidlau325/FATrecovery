@@ -19,7 +19,6 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     unsigned int numEntryPerCluster = oneClusterSizeByte / sizeof(DIRENTRY);
     DIRENTRY *de;
     unsigned char *lfn = malloc(sizeof(char)*32);
-    unsigned char *firstByte = malloc(sizeof(char));
     unsigned int NofLFN;
     unsigned char *tempLFNName;
     unsigned char *LFNarray[11];
@@ -145,6 +144,7 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     if(fileFound==0){
     	printf("%s: error - file not found\n",filename);
     }
+    free(lfn);
 }
 
 void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
