@@ -29,7 +29,7 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     unsigned int oneClusterSizeByte = be.BPB_SecPerClus * be.BPB_BytsPerSec;
     unsigned int numEntryPerCluster = oneClusterSizeByte / sizeof(DIRENTRY);
     DIRENTRY *de;
-    unsigned char *lfn;
+    unsigned char *lfn = malloc(sizeof(char)*32);
     unsigned char *firstByte = malloc(sizeof(char));
     unsigned int NofLFN;
     unsigned char *tempLFNName;
@@ -40,7 +40,8 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     long currentPoint;
     int countEntry = 1;
     unsigned char *LFNName = NULL;
-
+    totalLFNlength =0;
+    NofLFN=0;
     // printf("PreSector: %d\n",preSector);
     // printf("OneClusterSizeByte: %d\n",oneClusterSizeByte);
     // printf("EntrySize: %d\n",sizeof(DIRENTRY));
@@ -51,39 +52,37 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         for(entry = 0;entry < numEntryPerCluster;entry++){
         de = malloc(sizeof(DIRENTRY));
         fread(de,sizeof(DIRENTRY),1,dev);
+
         if(de->DIR_Attr == 0x0f && de->DIR_Name[0] != 0xe5){
             // printf("I got a long file name here\n");
             currentPoint = ftell(dev);
             fseek(dev,(long)(currentPoint - 32),SEEK_SET);
-
-            lfn = malloc(sizeof(char)*32);
+            memset(lfn,0,sizeof(char)*32);
             fread(lfn,(sizeof(char)*32),1,dev);
-            NofLFN = lfn[0] ^ 0x40;
-            totalLFNlength=0;
-          //  printf("# of LFN: %d\n",NofLFN);
            
-            for(j=0;j<NofLFN;j++){
-                if(j!=0){ 
-                    lfn = malloc(sizeof(char)*32);
-                    fread(lfn,(sizeof(char)*32),1,dev); 
-                    entry++; 
-                }
             LFNlength=0;
             tempLFNName = malloc(sizeof(char)*32);
             for(i=1;i<32;i+=2){
                 if(i == 11){ i+=3;}
                 if(i == 26){ continue;}
                 if(lfn[i] == 0){ break; }
-              //  printf("%c\n",lfn[i]);
+                // printf("%c\n",lfn[i]);
                 tempLFNName[LFNlength++]=lfn[i];
                 totalLFNlength++;
             }
-            LFNarray[j] = malloc(sizeof(char)* (LFNlength+1));
-            memcpy(LFNarray[j],tempLFNName,LFNlength);
-            LFNarray[j][LFNlength]=0;
+           //  printf("LENGTH: %d\n",LFNlength);
+            LFNarray[NofLFN] = malloc(sizeof(char)* (LFNlength +1));
+            memcpy(LFNarray[NofLFN],tempLFNName,LFNlength);
+            LFNarray[NofLFN][LFNlength]=0;
+            NofLFN++;
             free(tempLFNName);
-            free(lfn);
-            }
+           // printf("NofLFN: %d\n",NofLFN);
+
+        }else if(de->DIR_Name[0] != 0 && de->DIR_Name[0] != 0xe5){
+            // printf("8.3 here\n");
+            startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
+            fnameLength = checkFileName(fname,de->DIR_Name);
+            
             LFNName = malloc(sizeof(char) * 255);
             for(i=(NofLFN-1);i>-1;i--){
                 if(i == (NofLFN-1)){
@@ -95,10 +94,6 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
             }
             LFNName[totalLFNlength]=0;
 
-        }else if(de->DIR_Name[0] != 0 && de->DIR_Name[0] != 0xe5){
-            // printf("8.3 here\n");
-            startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
-            fnameLength = checkFileName(fname,de->DIR_Name);
             if(de->DIR_Attr & 0b00010000){
                 fname[fnameLength++] = '/';
                 fname[fnameLength] = 0;
@@ -107,11 +102,15 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
             }
             if(LFNName != NULL){
                 printf("%d, %s, %s, %u, %u\n",countEntry++,fname,LFNName,de->DIR_FileSize,startCluster);
+           //         printf("Cluster: %d\n",cluster);
                 free(LFNName);
                 LFNName = NULL;
             }else{
                 printf("%d, %s, %u, %u\n",countEntry++,fname,de->DIR_FileSize,startCluster);
             }
+
+            totalLFNlength=0;
+            NofLFN=0;
         }else if(de->DIR_Name[0] == 0){
            // printf("no more here\n");
             free(de);

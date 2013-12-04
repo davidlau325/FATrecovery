@@ -64,9 +64,11 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
                 totalLFNlength++;
             }
            //  printf("LENGTH: %d\n",LFNlength);
-            LFNarray[NofLFN] = malloc(sizeof(char)* LFNlength);
+            LFNarray[NofLFN] = malloc(sizeof(char)* (LFNlength +1));
             memcpy(LFNarray[NofLFN],tempLFNName,LFNlength);
+            LFNarray[NofLFN][LFNlength]=0;
             NofLFN++;
+            free(tempLFNName);
            // printf("NofLFN: %d\n",NofLFN);
 
         }else if(de->DIR_Attr != 0x0f && de->DIR_Name[0] == 0xe5){
@@ -93,7 +95,7 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
                 	// printf("Find the exact same match\n");
                 	// printf("Start recovering...\n");
                 	printf("start cluster: %d\n",startCluster);
-                	if(FAT[startCluster] == 0){
+                	if(FAT[startCluster] == 0 || startCluster==0){
         				FAT[startCluster] = 0xfffffff;
         			printf("%s: recovered\n",filename);
         			fseek(dev,(long)(preSector + (cluster * be.BPB_SecPerClus)) * be.BPB_BytsPerSec + entry * sizeof(DIRENTRY),SEEK_SET);
@@ -109,9 +111,11 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         			fseek(dev,(long)(preSector + (cluster * be.BPB_SecPerClus)) * be.BPB_BytsPerSec + ((entry - j) * sizeof(DIRENTRY)),SEEK_SET);
         			fwrite(tempIndex,1,1,dev);
 
-        			for(j=0;j<be.BPB_NumFATs;j++){
-        				fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
-        				 fwrite(FAT + startCluster,4,1,dev);
+        			if(startCluster != 0){
+        				for(j=0;j<be.BPB_NumFATs;j++){
+        					fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
+        					fwrite(FAT + startCluster,4,1,dev);
+        				}
         			}
         				
         			}else{
@@ -185,7 +189,7 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
       			isSame=0;
       			fnameLength = checkFileName(fname,de->DIR_Name);
         		startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
-        		if(FAT[startCluster] == 0){
+        		
 				
 				fseek(dev,(long)(preSector + startCluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec,SEEK_SET);
 				fileContent = malloc(sizeof(char) * (de->DIR_FileSize));
@@ -207,14 +211,18 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     				}
     			}
     			if(isSame == MD5_DIGEST_LENGTH){
+
+    			if(FAT[startCluster] == 0 || startCluster==0){
         		FAT[startCluster] = 0xfffffff;
 
         		fseek(dev,(long)(preSector + (cluster * be.BPB_SecPerClus)) * be.BPB_BytsPerSec + entry * sizeof(DIRENTRY),SEEK_SET);
         		fwrite(filename,1,1,dev);
 
-        		for(j=0;j<be.BPB_NumFATs;j++){
+        		if(startCluster!=0){
+        			for(j=0;j<be.BPB_NumFATs;j++){
         			fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
         			fwrite(FAT + startCluster,4,1,dev);
+        			}
         		}
         		printf("%s: recovered\n",filename);
         		isFound=1;
@@ -274,8 +282,8 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		continue;
         	}else{
         		fnameLength = checkFileName(fname,de->DIR_Name);
-        		 printf("Deleted: %s\n",fname);
-        		 printf("Checking: %s\n",filename);
+        		// printf("Deleted: %s\n",fname);
+        	//	 printf("Checking: %s\n",filename);
         		if(strcmp(fname +1,filename +1)==0){
         		//	printf("Yes, they are same!\n");
         			startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
@@ -298,7 +306,7 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         }else{
         	// recover here
         	// printf("Start recovering...\n");
-        	if(FAT[startCluster] == 0){
+        	if(FAT[startCluster] == 0 || startCluster==0){
         		// printf("No occupy yet!\n");
         		FAT[startCluster] = 0xfffffff;
         		// printf("cluster: %d\n",deletedCluster);
@@ -306,10 +314,11 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
 
         		fseek(dev,(long)(preSector + (deletedCluster * be.BPB_SecPerClus)) * be.BPB_BytsPerSec + deletedEntry * sizeof(DIRENTRY),SEEK_SET);
         		fwrite(filename,1,1,dev);
-
-        		for(j=0;j<be.BPB_NumFATs;j++){
-        			fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
-        			fwrite(FAT + startCluster,4,1,dev);
+        		if(startCluster != 0){
+        			for(j=0;j<be.BPB_NumFATs;j++){
+        				fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
+        				fwrite(FAT + startCluster,4,1,dev);
+        			}
         		}
         		printf("%s: recovered\n",filename);
         	}else{
