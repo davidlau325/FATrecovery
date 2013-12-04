@@ -62,6 +62,7 @@ struct DirEntry {
 };
 
 typedef struct DirEntry DIRENTRY;
+
 #pragma pack(pop)
 
 #endif

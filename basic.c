@@ -8,15 +8,38 @@ char* devicename = NULL;
 char* filename = NULL;
 char* md5 = NULL;
 
+int checkFileName(char fname[13], const unsigned char DIR_Name[11]){
+    int i,j;
+    for(i=0;i<8 && DIR_Name[i] != ' ';i++){
+        fname[i] = DIR_Name[i];
+    }
+    if(DIR_Name[8] != ' '){
+        fname[i++] = '.';
+        for(j=8;j<=10 && DIR_Name[j] != ' ';j++,i++){
+            fname[i] = DIR_Name[j];
+        }
+    }
+    fname[i] = 0;
+    return i;
+}
+
 void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     unsigned int preSector = be.BPB_RsvdSecCnt + (be.BPB_FATSz32 * be.BPB_NumFATs) - (2 * be.BPB_SecPerClus);
     unsigned int oneClusterSizeByte = be.BPB_SecPerClus * be.BPB_BytsPerSec;
     unsigned int numEntryPerCluster = oneClusterSizeByte / sizeof(DIRENTRY);
     DIRENTRY *de;
+    unsigned char *lfn;
     unsigned char *firstByte = malloc(sizeof(char));
     unsigned int NofLFN;
-    unsigned int cluster;
-    int entry;
+    unsigned char *tempLFNName;
+    unsigned char *LFNarray[11];
+    unsigned int cluster,startCluster;
+    int entry,i,j,k,LFNlength,fnameLength,totalLFNlength;
+    char fname[13];
+    long currentPoint;
+    int countEntry = 1;
+    unsigned char *LFNName = NULL;
+
     // printf("PreSector: %d\n",preSector);
     // printf("OneClusterSizeByte: %d\n",oneClusterSizeByte);
     // printf("EntrySize: %d\n",sizeof(DIRENTRY));
@@ -27,17 +50,74 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         for(entry = 0;entry < numEntryPerCluster;entry++){
         de = malloc(sizeof(DIRENTRY));
         fread(de,sizeof(DIRENTRY),1,dev);
-        if(de->DIR_Attr == 0x0f){
-            printf("I got a long file name here\n");
-            // use ftell to check
-        }else if(de->DIR_Name[0] != 0 && de->DIR_Name[0] != 0xe5){
-            printf("8.3 here\n");
-        }else{
+        if(de->DIR_Attr == 0x0f && de->DIR_Name[0] != 0xe5){
+            // printf("I got a long file name here\n");
+            currentPoint = ftell(dev);
+            fseek(dev,(long)(currentPoint - 32),SEEK_SET);
 
-            printf("no more here\n");
+            lfn = malloc(sizeof(char)*32);
+            fread(lfn,(sizeof(char)*32),1,dev);
+            NofLFN = lfn[0] ^ 0x40;
+            totalLFNlength=0;
+          //  printf("# of LFN: %d\n",NofLFN);
+           
+            for(j=0;j<NofLFN;j++){
+                if(j!=0){ 
+                    lfn = malloc(sizeof(char)*32);
+                    fread(lfn,(sizeof(char)*32),1,dev); 
+                    entry++; 
+                }
+            LFNlength=0;
+            tempLFNName = malloc(sizeof(char)*32);
+            for(i=1;i<32;i+=2){
+                if(i == 11){ i+=3;}
+                if(i == 26){ continue;}
+                if(lfn[i] == 0){ break; }
+              //  printf("%c\n",lfn[i]);
+                tempLFNName[LFNlength++]=lfn[i];
+                totalLFNlength++;
+            }
+            LFNarray[j] = malloc(sizeof(char)* LFNlength);
+            memcpy(LFNarray[j],tempLFNName,LFNlength);
+            free(tempLFNName);
+            free(lfn);
+            }
+            LFNName = malloc(sizeof(char) * 255);
+            for(i=(NofLFN-1);i>-1;i--){
+                if(i == (NofLFN-1)){
+                strcpy(LFNName,LFNarray[i]);
+                }else{
+                strcat(LFNName,LFNarray[i]);
+                }
+             //   printf("%s\n",LFNarray[i]);
+            }
+            LFNName[totalLFNlength]=0;
+
+        }else if(de->DIR_Name[0] != 0 && de->DIR_Name[0] != 0xe5){
+            // printf("8.3 here\n");
+            startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
+            fnameLength = checkFileName(fname,de->DIR_Name);
+            if(de->DIR_Attr & 0b00010000){
+                fname[fnameLength++] = '/';
+                fname[fnameLength] = 0;
+                LFNName[totalLFNlength++] = '/';
+                LFNName[totalLFNlength] = 0;
+            }
+            if(LFNName != NULL){
+                printf("%d, %s, %s, %u, %u\n",countEntry++,fname,LFNName,de->DIR_FileSize,startCluster);
+                free(LFNName);
+                LFNName = NULL;
+            }else{
+                printf("%d, %s, %u, %u\n",countEntry++,fname,de->DIR_FileSize,startCluster);
+            }
+        }else if(de->DIR_Name[0] == 0){
+           // printf("no more here\n");
+            free(de);
+            break;
         }
         free(de);
         }
+
     }
 
 }
@@ -51,7 +131,7 @@ void printInfo(BOOTSECTOR be,unsigned int *FAT,unsigned int totalDataCluster){
     printf("Number of sectors per cluster = %hhu\n",be.BPB_SecPerClus);
     printf("Number of reserved sectors = %hu\n",be.BPB_RsvdSecCnt);
     for(i=2;i<totalDataCluster;i++){
-           // printf("%d: 0x%x (%d)\n",i,FAT[i],FAT[i]);
+          // if(i < 100){  printf("%d: 0x%x (%d)\n",i,FAT[i],FAT[i]);}
         if(FAT[i]==0){
             numOfFree++;
         }else{
@@ -133,3 +213,11 @@ char detectArgv(int argc,char** argv){
     }
 }
 
+void toUpperCase(char *str){
+    int i;
+    for(i=0;str[i];i++){
+        if(str[i] >= 'a' && str[i] <= 'z'){
+            str[i] -= ('a' - 'A');
+        }
+    }
+}

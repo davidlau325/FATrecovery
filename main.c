@@ -44,35 +44,33 @@ int main(int argc, char** argv) {
 
         switch(detect){
             case 'i':
-                // printf("reached i\n");
                 // printf("Device Name: %s\n",devicename);
                 // print boot sector information
                 printInfo(be,FAT,totalDataCluster);
                 break;
             case 'l':
-                // printf("reached l\n");
                 // printf("Device Name: %s\n",devicename);
                 // list all the directory entries
                 listDIR(dev,be,FAT);
                 break;
             case 'r':
-                // printf("reached r\n");
                 // printf("Device Name: %s\n",devicename);
                 // printf("File Name: %s\n",filename);
                 // recovery 8.3 filename
+                toUpperCase(filename);
+                recoveryNormal(dev,be,FAT);
                 break;
             case 'm':
-                // printf("reached m\n");
                 // printf("Device Name: %s\n",devicename);
                 // printf("File Name: %s\n",filename);
                 // printf("MD5: %s\n",md5);
                 // recovery 8.3 filename with MD5
                 break;
             case 'R':
-                // printf("reached R\n");
                 // printf("Device Name: %s\n",devicename);
                 // printf("File Name: %s\n",filename);
                 // recovery long filename
+                recoveryLFN(dev,be,FAT);
                 break;
             default:
                 printf("reached to Default, something wrong with interpreter\n");
