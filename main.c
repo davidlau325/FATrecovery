@@ -14,6 +14,8 @@ extern char* md5;
 
 int main(int argc, char** argv) {
     char detect;
+    FILE *dev;
+    BOOTSECTOR be;
     detect = detectArgv(argc,argv);
     if(detect == 0){
         printf("Usage: ./recover -d [device filename] [other arguments]\n");
@@ -22,34 +24,54 @@ int main(int argc, char** argv) {
         printf("-r filename [-m md5]  File recovery with 8.3 filename\n");
         printf("-R filename           File recovery with long filename\n");
     }else{
+        if((dev = fopen(devicename,"r+")) == NULL){
+            printf("error - fail to open the device file\n");
+            perror(devicename);
+            return 1;
+        }
+        fread(&be,sizeof(BOOTSECTOR),1,dev);
+        unsigned int totalDataCluster = be.BPB_TotSec32 - (be.BPB_NumFATs * be.BPB_FATSz32) - be.BPB_RsvdSecCnt;
+        unsigned int *FAT = malloc(sizeof(unsigned int) * totalDataCluster);
+
+        /* Debugging info
+        printf("Total Cluster: %d\n",be.BPB_TotSec32);
+        printf("Total Data Cluster: %d\n",totalDataCluster);
+        printf("First FAT starts: %d\n",be.BPB_RsvdSecCnt * be.BPB_BytsPerSec);
+        */
+
+        fseek(dev,(long) be.BPB_RsvdSecCnt * be.BPB_BytsPerSec,SEEK_SET);
+        fread(FAT,sizeof(int),totalDataCluster,dev);
+
         switch(detect){
             case 'i':
-                printf("reached i\n");
-                printf("Device Name: %s\n",devicename);
+                // printf("reached i\n");
+                // printf("Device Name: %s\n",devicename);
                 // print boot sector information
+                printInfo(be,FAT,totalDataCluster);
                 break;
             case 'l':
-                printf("reached l\n");
-                printf("Device Name: %s\n",devicename);
+                // printf("reached l\n");
+                // printf("Device Name: %s\n",devicename);
                 // list all the directory entries
+                listDIR(dev,be,FAT);
                 break;
             case 'r':
-                printf("reached r\n");
-                printf("Device Name: %s\n",devicename);
-                printf("File Name: %s\n",filename);
+                // printf("reached r\n");
+                // printf("Device Name: %s\n",devicename);
+                // printf("File Name: %s\n",filename);
                 // recovery 8.3 filename
                 break;
             case 'm':
-                printf("reached m\n");
-                printf("Device Name: %s\n",devicename);
-                printf("File Name: %s\n",filename);
-                printf("MD5: %s\n",md5);
+                // printf("reached m\n");
+                // printf("Device Name: %s\n",devicename);
+                // printf("File Name: %s\n",filename);
+                // printf("MD5: %s\n",md5);
                 // recovery 8.3 filename with MD5
                 break;
             case 'R':
-                printf("reached R\n");
-                printf("Device Name: %s\n",devicename);
-                printf("File Name: %s\n",filename);
+                // printf("reached R\n");
+                // printf("Device Name: %s\n",devicename);
+                // printf("File Name: %s\n",filename);
                 // recovery long filename
                 break;
             default:

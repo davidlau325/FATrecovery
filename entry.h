@@ -44,6 +44,8 @@ struct BootEntry {
 	unsigned char BS_FilSysType[8];	/* File system type label in ASCII */
 };
 
+typedef struct BootEntry BOOTSECTOR;
+
 struct DirEntry {
 	unsigned char DIR_Name[11];		/* File name */
 	unsigned char DIR_Attr;			/* File attributes */
@@ -58,6 +60,8 @@ struct DirEntry {
 	unsigned short DIR_FstClusLO;	/* Low 2 bytes of the first cluster address */
 	unsigned int DIR_FileSize;		/* File size in bytes. (0 for directories) */
 };
+
+typedef struct DirEntry DIRENTRY;
 #pragma pack(pop)
 
 #endif
