@@ -90,7 +90,7 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
                 if(strcmp(LFNName,filename)==0){
                 	// printf("Find the exact same match\n");
                 	// printf("Start recovering...\n");
-
+                	printf("start cluster: %d\n",startCluster);
                 	if(FAT[startCluster] == 0){
         				FAT[startCluster] = 0xfffffff;
         			printf("%s: recovered\n",filename);
@@ -108,8 +108,8 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         			fwrite(tempIndex,1,1,dev);
 
         			for(j=0;j<be.BPB_NumFATs;j++){
-        				fseek(dev,(be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32 + be.BPB_BytsPerSec) + (4 * startCluster)),SEEK_SET);
-        				fwrite(FAT + startCluster,4,1,dev);
+        				fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
+        				 fwrite(FAT + startCluster,4,1,dev);
         			}
         				
         			}else{
@@ -210,7 +210,7 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		fwrite(filename,1,1,dev);
 
         		for(j=0;j<be.BPB_NumFATs;j++){
-        			fseek(dev,(be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32 + be.BPB_BytsPerSec) + (4 * startCluster)),SEEK_SET);
+        			fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
         			fwrite(FAT + startCluster,4,1,dev);
         		}
         		printf("%s: recovered\n",filename);

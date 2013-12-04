@@ -131,7 +131,7 @@ void printInfo(BOOTSECTOR be,unsigned int *FAT,unsigned int totalDataCluster){
     printf("Number of sectors per cluster = %hhu\n",be.BPB_SecPerClus);
     printf("Number of reserved sectors = %hu\n",be.BPB_RsvdSecCnt);
     for(i=2;i<totalDataCluster;i++){
-          // if(i < 100){  printf("%d: 0x%x (%d)\n",i,FAT[i],FAT[i]);}
+         //  if(i < 20){  printf("%d: 0x%x (%d)\n",i,FAT[i],FAT[i]);}
         if(FAT[i]==0){
             numOfFree++;
         }else{
