@@ -78,8 +78,9 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
                 tempLFNName[LFNlength++]=lfn[i];
                 totalLFNlength++;
             }
-            LFNarray[j] = malloc(sizeof(char)* LFNlength);
+            LFNarray[j] = malloc(sizeof(char)* (LFNlength+1));
             memcpy(LFNarray[j],tempLFNName,LFNlength);
+            LFNarray[j][LFNlength]=0;
             free(tempLFNName);
             free(lfn);
             }
