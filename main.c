@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
                 // printf("File Name: %s\n",filename);
                 // printf("MD5: %s\n",md5);
                 // recovery 8.3 filename with MD5
+                recoveryMD5(dev,be,FAT);
                 break;
             case 'R':
                 // printf("Device Name: %s\n",devicename);

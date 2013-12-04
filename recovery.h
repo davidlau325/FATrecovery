@@ -2,6 +2,7 @@
 #define	RECOVERY_H
 
 void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT);
+void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT);
 void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT);
 
 #endif	

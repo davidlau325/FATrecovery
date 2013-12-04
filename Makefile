@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=
+CFLAGS= -lssl -lcrypto
 DEPS=basic.h recovery.h entry.h
 OBJ=main.o basic.o recovery.o
 

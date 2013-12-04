@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/md5.h>
 #include "entry.h"
 #include "basic.h"
 
@@ -10,6 +11,7 @@ available inputs:
 extern char* devicename;
 extern char* filename;
 extern char* md5;
+extern int md5Length;
 */
 void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
 	unsigned int preSector = be.BPB_RsvdSecCnt + (be.BPB_FATSz32 * be.BPB_NumFATs) - (2 * be.BPB_SecPerClus);
@@ -141,6 +143,102 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     }
 }
 
+void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
+	unsigned int preSector = be.BPB_RsvdSecCnt + (be.BPB_FATSz32 * be.BPB_NumFATs) - (2 * be.BPB_SecPerClus);
+    unsigned int oneClusterSizeByte = be.BPB_SecPerClus * be.BPB_BytsPerSec;
+    unsigned int numEntryPerCluster = oneClusterSizeByte / sizeof(DIRENTRY);
+    DIRENTRY *de;
+    unsigned char *fileContent;
+    unsigned int cluster,startCluster;
+    int entry,i,j,k,isSame,isFound,fnameLength;
+    char fname[13];
+    long currentPoint;
+    unsigned char* md5user = (unsigned char*)calloc(MD5_DIGEST_LENGTH,sizeof(char));
+    unsigned char* md5file;
+
+ //   printf("Input Length: %d\n",md5Length);
+
+    MD5((unsigned char*)md5,md5Length,md5user);
+
+    // given MD5
+/*    printf("Given MD5:\n");
+    for(i=0;i<MD5_DIGEST_LENGTH;i++){
+    	printf("%02x",md5user[i]);
+    }
+    printf("\n");
+    */
+
+    isFound=0;
+    for(cluster = be.BPB_RootClus & EOC_HI; cluster && cluster < EOC_LO; cluster = FAT[cluster] & EOC_HI){
+        for(entry = 0;entry < numEntryPerCluster;entry++){
+       	fseek(dev,(long)((preSector + cluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec) + (entry * sizeof(DIRENTRY)),SEEK_SET);
+        de = malloc(sizeof(DIRENTRY));
+        fread(de,sizeof(DIRENTRY),1,dev);
+
+     //   printf("First: %hhx, Attr: %hhx\n",de->DIR_Name[0],de->DIR_Attr);
+
+        if(de->DIR_Name[0] == 0xe5 && de->DIR_Attr != 0x0f){
+        	if(de->DIR_Attr & 0b00010000){
+        		printf("Deleted Folder\n");
+        		continue;
+        	}else{
+      			isSame=0;
+      			fnameLength = checkFileName(fname,de->DIR_Name);
+        		startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
+        		if(FAT[startCluster] == 0){
+				
+				fseek(dev,(long)(preSector + startCluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec,SEEK_SET);
+				fileContent = malloc(sizeof(char) * (de->DIR_FileSize));
+				fread(fileContent,sizeof(char) * de->DIR_FileSize,1,dev);
+			//	printf("File Size: %d\n",de->DIR_FileSize);
+		//		printf("File Content: %s\n",fileContent);
+				md5file = (unsigned char*)calloc(MD5_DIGEST_LENGTH,sizeof(char));
+				MD5((unsigned char*)fileContent,de->DIR_FileSize,md5file);
+
+			/*	printf("MD5 File: %s\n",fname);
+				for(i=0;i<MD5_DIGEST_LENGTH;i++){
+    				printf("%02x",md5file[i]);
+    			}
+   				printf("\n"); */
+
+				for(i=0;i<MD5_DIGEST_LENGTH;i++){
+    				if(md5file[i]==md5user[i]){
+    					isSame++;
+    				}
+    			}
+    			if(isSame == MD5_DIGEST_LENGTH){
+        		FAT[startCluster] = 0xfffffff;
+
+        		fseek(dev,(long)(preSector + (cluster * be.BPB_SecPerClus)) * be.BPB_BytsPerSec + entry * sizeof(DIRENTRY),SEEK_SET);
+        		fwrite(filename,1,1,dev);
+
+        		for(j=0;j<be.BPB_NumFATs;j++){
+        			fseek(dev,((be.BPB_RsvdSecCnt + (j * (long) be.BPB_FATSz32)) * be.BPB_BytsPerSec) + (4 * startCluster),SEEK_SET);
+        			fwrite(FAT + startCluster,4,1,dev);
+        		}
+        		printf("%s: recovered\n",filename);
+        		isFound=1;
+        		}
+
+        		free(fileContent);
+
+        		}else{
+        			printf("%s: error - fail to recover\n",filename);
+        		}
+        	}
+        }else if(de->DIR_Name[0] == 0){
+        	free(de);
+        	break;
+        }
+        free(de);
+        }
+    }
+
+    if(isFound==0){
+    	printf("%s: error - file not found\n",filename);
+    }
+}
+
 void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
 	unsigned int preSector = be.BPB_RsvdSecCnt + (be.BPB_FATSz32 * be.BPB_NumFATs) - (2 * be.BPB_SecPerClus);
     unsigned int oneClusterSizeByte = be.BPB_SecPerClus * be.BPB_BytsPerSec;
@@ -176,8 +274,8 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		continue;
         	}else{
         		fnameLength = checkFileName(fname,de->DIR_Name);
-        		// printf("Deleted: %s\n",fname);
-        		// printf("Checking: %s\n",filename);
+        		 printf("Deleted: %s\n",fname);
+        		 printf("Checking: %s\n",filename);
         		if(strcmp(fname +1,filename +1)==0){
         		//	printf("Yes, they are same!\n");
         			startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
