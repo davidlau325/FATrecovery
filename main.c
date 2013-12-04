@@ -30,7 +30,8 @@ int main(int argc, char** argv) {
             return 1;
         }
         fread(&be,sizeof(BOOTSECTOR),1,dev);
-        unsigned int totalDataCluster = be.BPB_TotSec32 - (be.BPB_NumFATs * be.BPB_FATSz32) - be.BPB_RsvdSecCnt;
+
+        unsigned int totalDataCluster = (be.BPB_TotSec32 - (be.BPB_NumFATs * be.BPB_FATSz32) - be.BPB_RsvdSecCnt)/ be.BPB_SecPerClus;
         unsigned int *FAT = malloc(sizeof(unsigned int) * totalDataCluster);
 
         /* Debugging info
