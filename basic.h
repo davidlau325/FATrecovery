@@ -5,6 +5,7 @@ extern char* devicename;
 extern char* filename;
 extern char* md5;
 extern int md5Length;
+extern int filenameLength;
 
 char detectArgv(int argc,char** argv);
 void printInfo(BOOTSECTOR be,unsigned int *FAT,unsigned int totalDataCluster);

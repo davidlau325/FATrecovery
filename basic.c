@@ -8,6 +8,7 @@ char* devicename = NULL;
 char* filename = NULL;
 char* md5 = NULL;
 int md5Length;
+int filenameLength;
 
 int checkFileName(char fname[13], const unsigned char DIR_Name[11]){
     int i,j;
@@ -170,6 +171,7 @@ char detectArgv(int argc,char** argv){
     				return 0;
     			}else{
     				filename = argv[i];
+                    filenameLength = strlen(argv[i]);
     				hasr=1;
     			}
     		}else if(hasR == 2){
@@ -177,6 +179,7 @@ char detectArgv(int argc,char** argv){
     				return 0;
     			}else{
     				filename = argv[i];
+                    filenameLength = strlen(argv[i]);
     				hasR=1;
     			}
     		}else if(hasM == 2){

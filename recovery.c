@@ -12,6 +12,7 @@ extern char* devicename;
 extern char* filename;
 extern char* md5;
 extern int md5Length;
+filenameLength
 */
 void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
 	unsigned int preSector = be.BPB_RsvdSecCnt + (be.BPB_FATSz32 * be.BPB_NumFATs) - (2 * be.BPB_SecPerClus);
@@ -156,16 +157,10 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     char fname[13];
     long currentPoint;
     unsigned char* md5file;
+    unsigned char* realMD5file = malloc(sizeof(char)*33);
 
- //   printf("Input Length: %d\n",md5Length);
-
-    // given MD5
-/*    printf("Given MD5:\n");
-    for(i=0;i<MD5_DIGEST_LENGTH;i++){
-    	printf("%02x",md5user[i]);
-    }
-    printf("\n");
-    */
+   // printf("Input Length: %d\n",md5Length);
+   // printf("Given MD5: %s\n",md5);
 
     isFound=0;
     for(cluster = be.BPB_RootClus & EOC_HI; cluster && cluster < EOC_LO; cluster = FAT[cluster] & EOC_HI){
@@ -192,26 +187,23 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
                     fseek(dev,(long)(preSector + startCluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec,SEEK_SET);
                     fileContent = malloc(sizeof(char) * (de->DIR_FileSize));
                     fread(fileContent,sizeof(char) * de->DIR_FileSize,1,dev);
-                  //  printf("File Size: %d\n",de->DIR_FileSize);
-                //      printf("File Content: %s\n",fileContent);
+                  //  printf("File Name: %s\n",de->DIR_Name);
+                  // printf("File Size: %d\n",de->DIR_FileSize);
+                   //   printf("File Content: %s\n",fileContent);
                     MD5((unsigned char*)fileContent,de->DIR_FileSize,md5file);
                 }
 
-
-
-			/*	printf("MD5 File: %s\n",fname);
 				for(i=0;i<MD5_DIGEST_LENGTH;i++){
-    				printf("%02x",md5file[i]);
-    			}
-   				printf("\n"); */
-                if(md5Length==MD5_DIGEST_LENGTH){
-				    for(i=0;i<MD5_DIGEST_LENGTH;i++){
-    				    if(md5file[i]==md5[i]){
-    					   isSame++;
-    				    }
-    			     }
+    				sprintf(realMD5file+(i*2),"%02x",md5file[i]);
+    			} 
+   			  realMD5file[32]=0;
+                
+             /*   for(i=0;i<32;i++){
+                    printf("%c",realMD5file[i]);
                 }
-    			if(isSame == MD5_DIGEST_LENGTH){
+                printf("\n"); */
+                
+    			if(strcmp(realMD5file,md5)==0){
 
     			if(FAT[startCluster] == 0 || startCluster==0){
         		FAT[startCluster] = 0xfffffff;
@@ -227,12 +219,12 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		}
         		printf("%s: recovered\n",filename);
         		isFound=1;
-        		}
+        		}else{
+                    printf("%s: error - fail to recover\n",filename);
+                }
 
                 free(md5file);
 
-        		}else{
-        			printf("%s: error - fail to recover\n",filename);
         		}
         	}
         }else if(de->DIR_Name[0] == 0){
@@ -285,14 +277,22 @@ void recoveryNormal(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		fnameLength = checkFileName(fname,de->DIR_Name);
         		// printf("Deleted: %s\n",fname);
         	//	 printf("Checking: %s\n",filename);
-        		if(strcmp(fname +1,filename +1)==0){
+             //   printf("fnameLength: %d, filenameLength: %d\n",fnameLength,filenameLength);
+                if(fnameLength == 1 && filenameLength ==1){
+                    startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
+                    deletedEntry = entry;
+                    deletedCluster = cluster;
+                    SameFileName++;
+                }else{
+        		  if(strcmp(fname +1,filename +1)==0){
         		//	printf("Yes, they are same!\n");
         			startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
         		//	printf("Start Cluster: %d\n",startCluster);
         			deletedEntry = entry;
         			deletedCluster = cluster;
         			SameFileName++;
-        		}
+        		  } 
+                }
         	}
         }
 
