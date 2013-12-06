@@ -155,12 +155,9 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     int entry,i,j,k,isSame,isFound,fnameLength;
     char fname[13];
     long currentPoint;
-    unsigned char* md5user = (unsigned char*)calloc(MD5_DIGEST_LENGTH,sizeof(char));
     unsigned char* md5file;
 
  //   printf("Input Length: %d\n",md5Length);
-
-    MD5((unsigned char*)md5,md5Length,md5user);
 
     // given MD5
 /*    printf("Given MD5:\n");
@@ -207,12 +204,13 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
     				printf("%02x",md5file[i]);
     			}
    				printf("\n"); */
-
-				for(i=0;i<MD5_DIGEST_LENGTH;i++){
-    				if(md5file[i]==md5user[i]){
-    					isSame++;
-    				}
-    			}
+                if(md5Length==MD5_DIGEST_LENGTH){
+				    for(i=0;i<MD5_DIGEST_LENGTH;i++){
+    				    if(md5file[i]==md5[i]){
+    					   isSame++;
+    				    }
+    			     }
+                }
     			if(isSame == MD5_DIGEST_LENGTH){
 
     			if(FAT[startCluster] == 0 || startCluster==0){
