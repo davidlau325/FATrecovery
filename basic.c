@@ -85,20 +85,24 @@ void listDIR(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
             if(de->DIR_Attr & 0b00010000){
                 fname[fnameLength++] = '/';
                 fname[fnameLength] = 0;
+            }
+            if(NofLFN > 0){
+                LFNName = malloc(sizeof(char) * 255);
+                for(i=(NofLFN-1);i>-1;i--){
+                    if(i == (NofLFN-1)){
+                    strcpy(LFNName,LFNarray[i]);
+                    }else{
+                    strcat(LFNName,LFNarray[i]);
+                    }
+                    //   printf("%s\n",LFNarray[i]);
+                }
+            LFNName[totalLFNlength]=0;
+
+            if(de->DIR_Attr & 0b00010000){
                 LFNName[totalLFNlength++] = '/';
                 LFNName[totalLFNlength] = 0;
             }
-            if(NofLFN > 0){
-                 LFNName = malloc(sizeof(char) * 255);
-            for(i=(NofLFN-1);i>-1;i--){
-                if(i == (NofLFN-1)){
-                strcpy(LFNName,LFNarray[i]);
-                }else{
-                strcat(LFNName,LFNarray[i]);
-                }
-             //   printf("%s\n",LFNarray[i]);
-            }
-            LFNName[totalLFNlength]=0;
+
                 printf("%d, %s, %s, %u, %u\n",countEntry++,fname,LFNName,de->DIR_FileSize,startCluster);
            //         printf("Cluster: %d\n",cluster);
                 free(LFNName);

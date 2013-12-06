@@ -88,7 +88,7 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
             if(de->DIR_Attr & 0b00010000){
                 printf("This is a folder\n");
             }else{
-            if(LFNName != NULL){
+            if(NofLFN > 0){
                 // printf("%s, %s, %u, %u\n",fname,LFNName,de->DIR_FileSize,startCluster);
                 if(strcmp(LFNName,filename)==0){
                 	// printf("Find the exact same match\n");
@@ -126,8 +126,6 @@ void recoveryLFN(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
 
                 free(LFNName);
                 LFNName = NULL;
-            }else{
-            	printf("Some problem with the LFN generation\n");
             }
         	}
         	totalLFNlength=0;
@@ -190,14 +188,19 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
       			fnameLength = checkFileName(fname,de->DIR_Name);
         		startCluster = (((unsigned int) de->DIR_FstClusHI << 16) + de->DIR_FstClusLO) & EOC_HI;
         		
-				
-				fseek(dev,(long)(preSector + startCluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec,SEEK_SET);
-				fileContent = malloc(sizeof(char) * (de->DIR_FileSize));
-				fread(fileContent,sizeof(char) * de->DIR_FileSize,1,dev);
-			//	printf("File Size: %d\n",de->DIR_FileSize);
-		//		printf("File Content: %s\n",fileContent);
-				md5file = (unsigned char*)calloc(MD5_DIGEST_LENGTH,sizeof(char));
-				MD5((unsigned char*)fileContent,de->DIR_FileSize,md5file);
+                md5file = (unsigned char*)calloc(MD5_DIGEST_LENGTH,sizeof(char));
+				if(startCluster == 0){
+				    MD5(NULL,0,md5file);
+                }else{
+                    fseek(dev,(long)(preSector + startCluster * be.BPB_SecPerClus) * be.BPB_BytsPerSec,SEEK_SET);
+                    fileContent = malloc(sizeof(char) * (de->DIR_FileSize));
+                    fread(fileContent,sizeof(char) * de->DIR_FileSize,1,dev);
+                  //  printf("File Size: %d\n",de->DIR_FileSize);
+                //      printf("File Content: %s\n",fileContent);
+                    MD5((unsigned char*)fileContent,de->DIR_FileSize,md5file);
+                }
+
+
 
 			/*	printf("MD5 File: %s\n",fname);
 				for(i=0;i<MD5_DIGEST_LENGTH;i++){
@@ -228,7 +231,7 @@ void recoveryMD5(FILE *dev,BOOTSECTOR be,unsigned int *FAT){
         		isFound=1;
         		}
 
-        		free(fileContent);
+                free(md5file);
 
         		}else{
         			printf("%s: error - fail to recover\n",filename);
